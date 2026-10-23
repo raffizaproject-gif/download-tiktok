@@ -114,7 +114,7 @@ footer span{background:var(--cream);border:3px solid var(--ink);border-radius:10
       <div class="bar" id="bar"><i></i></div>
     </div>
   </section>
-  <footer><span>Download TT by Vixzaa</span></footer>
+  <footer><span>Download TT by Vixzaa · v3</span></footer>
 </main>
 
 <script>
@@ -129,24 +129,27 @@ const abs=u=>!u?"":u.startsWith("http")?u:API+(u.startsWith("/")?"":"/")+u;
 const err=t=>{$("msg").textContent=t;$("msg").classList.add("show")};
 const clearErr=()=>$("msg").classList.remove("show");
 
+const tmo=(u,o,ms=8000)=>{const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);return fetch(u,{...o,signal:c.signal}).finally(()=>clearTimeout(t))};
 async function fetchInfo(link){
   const q=API+"/api/?hd=1&url="+encodeURIComponent(link);
   const tries=[];
-  if(WORKER)tries.push(()=>fetch(WORKER+"/?url="+encodeURIComponent(link)));
-  tries.push(()=>fetch(API+"/api/",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"hd=1&url="+encodeURIComponent(link)}));
-  tries.push(()=>fetch(q));
-  tries.push(()=>fetch("https://api.allorigins.win/raw?url="+encodeURIComponent(q)));
-  let last,netFail=0;
-  for(const t of tries){
-    try{
+  if(WORKER)tries.push(()=>tmo(WORKER+"/?url="+encodeURIComponent(link)));
+  tries.push(()=>tmo(API+"/api/",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"hd=1&url="+encodeURIComponent(link)}));
+  tries.push(()=>tmo(q));
+  tries.push(()=>tmo("https://api.allorigins.win/raw?url="+encodeURIComponent(q)));
+  let msg="";
+  // semua jalur dicoba bersamaan, yang pertama berhasil dipakai
+  try{
+    return await Promise.any(tries.map(async t=>{
       const j=await (await t()).json();
       if(j&&j.code===0&&j.data)return j.data;
-      last=new Error(j&&j.msg||"Video tidak ditemukan");
-      if(j&&j.msg&&!/limit/i.test(j.msg))break;
-    }catch(e){netFail++;last=e}
+      msg=msg||(j&&j.msg)||"";
+      throw new Error(msg||"kosong");
+    }));
+  }catch(e){
+    if(msg)throw new Error(msg);
+    throw new Error("Server downloader tidak terjangkau dari jaringanmu (kemungkinan diblokir). Pasang Worker proxy agar cepat dan stabil");
   }
-  if(netFail===tries.length)throw new Error("Server downloader tidak bisa dijangkau dari browser/jaringanmu (kemungkinan diblokir). Pasang Worker proxy, lihat petunjuk");
-  throw last||new Error("Gagal menghubungi layanan");
 }
 
 $("paste").onclick=async()=>{
@@ -183,6 +186,10 @@ $("go").onclick=async()=>{
 async function save(btn,url,name){
   if(!url)return err("Format ini tidak tersedia untuk video tersebut.");
   clearErr();
+  if(WORKER&&url.startsWith(WORKER)){
+    const a=document.createElement("a");a.href=url+"&dl="+encodeURIComponent(name);
+    document.body.appendChild(a);a.click();a.remove();return;
+  }
   const bar=$("bar"),fill=bar.firstElementChild;
   btn.classList.add("busy");btn.disabled=true;bar.style.display="block";fill.style.width="5%";
   try{
