@@ -89,6 +89,11 @@ footer span{background:var(--cream);border:3px solid var(--ink);border-radius:10
     <button class="btn go" id="go" type="button">Cari video</button>
     <div class="msg" id="msg" role="alert"></div>
 
+    <div class="msg show" id="setup" style="display:none;background:#fff3b0">
+      <b>Pasang Worker proxy (sekali saja)</b><br>
+      Deploy <code>worker.js</code> di Cloudflare Workers (gratis), lalu tempel URL-nya di sini.
+      <div class="row" style="margin-top:10px"><label class="field" style="box-shadow:3px 3px 0 #111"><input id="wurl" type="url" placeholder="https://tt.namamu.workers.dev"></label><button class="btn" id="wsave" type="button" style="padding:0 16px;background:var(--green)">Simpan</button></div>
+    </div>
     <div class="result" id="result">
       <h2>Hasil video</h2>
       <div class="folder">
@@ -114,14 +119,15 @@ footer span{background:var(--cream);border:3px solid var(--ink);border-radius:10
       <div class="bar" id="bar"><i></i></div>
     </div>
   </section>
-  <footer><span>Download TT by Vixzaa · v3</span></footer>
+  <footer><span>Download TT by Vixzaa · v4</span></footer>
 </main>
 
 <script>
 const $=id=>document.getElementById(id);
 const API="https://www.tikwm.com";
 // Isi dengan URL Cloudflare Worker kamu (lihat worker.js), contoh: "https://tt.namamu.workers.dev"
-const WORKER="";
+const WORKER_DEFAULT="";
+let WORKER=WORKER_DEFAULT||(()=>{try{return localStorage.getItem("ttw")||""}catch(e){return ""}})();
 const mp=u=>WORKER&&u?WORKER+"/dl?u="+encodeURIComponent(u):u;
 let data=null;
 const fmt=n=>{n=+n||0;return n>=1e9?(n/1e9).toFixed(1)+"B":n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":""+n};
@@ -152,6 +158,12 @@ async function fetchInfo(link){
   }
 }
 
+$("wsave").onclick=()=>{
+  const v=$("wurl").value.trim().replace(/\/+$/,"");
+  if(!/^https:\/\//.test(v))return err("URL Worker harus diawali https://");
+  WORKER=v;try{localStorage.setItem("ttw",v)}catch(e){}
+  $("setup").style.display="none";$("go").click();
+};
 $("paste").onclick=async()=>{
   try{$("url").value=await navigator.clipboard.readText();$("url").focus()}
   catch{err("Izin clipboard ditolak. Tempel link secara manual.")}
@@ -179,7 +191,8 @@ $("go").onclick=async()=>{
     $("result").classList.add("show");
     $("result").scrollIntoView({behavior:"smooth",block:"start"});
   }catch(e){
-    err("Gagal mengambil video: "+(e.message||"coba lagi")+". Pastikan video publik dan link benar.");
+    if(/Worker/.test(e.message||"")){err(e.message);$("setup").style.display="block";$("wurl").value=WORKER}
+    else err("Gagal mengambil video: "+(e.message||"coba lagi"));
   }finally{b.disabled=false;b.textContent="Cari video"}
 };
 
