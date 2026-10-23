@@ -364,6 +364,7 @@ $("go").onclick=async()=>{
     $("result").scrollIntoView({behavior:"smooth",block:"start"});
   }catch(e){
     if(e.net){err(t("netFail"));$("setup").style.display="block"}
+    else if(/limit/i.test(e.message||""))err("Kuota API gratis hari ini habis. Pasang server sendiri di Pengaturan, atau coba lagi besok.");
     else err(t("failPrefix")+(e.message||t("tryAgain")));
   }finally{b.disabled=false;b.textContent=t("search")}
 };
